@@ -1,5 +1,5 @@
-// Most of the code in thic contract is derived from the generic TCR implementation from Mike Goldin
-// This contract strips out most of the details and only keeps the basic TCR functionality
+// Most of the code in this contract is derived from the generic TCR implementation from Mike Goldin and (the adChain) team
+// This contract strips out most of the details and only keeps the basic TCR functionality (apply/propose, challenge, vote, resolve)
 // Consider this to be the "hello world" for TCR implementation
 // For real world usage, please refer to the generic TCR implementation
 // https://github.com/skmgoldin/tcr
