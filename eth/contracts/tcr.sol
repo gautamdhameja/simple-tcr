@@ -23,14 +23,12 @@ contract Tcr {
 
     // instead of using the elegant PLCR voting, we are using just a list because this is *simple-TCR*
     struct Vote {
-        uint pollId;
         bool voteValue;
         uint stake;
         bool claimed;
     }
     
     struct Poll {
-        uint challengeId;
         uint votesFor;
         uint votesAgainst;
         uint commitEndDate;
@@ -38,7 +36,6 @@ contract Tcr {
     }
 
     struct Challenge {
-        bytes32 listingHash;    // hash of the listing being challenged
         address challenger;     // Owner of Challenge
         bool resolved;          // Indication of if challenge is resolved
         uint stake;             // Number of tokens at stake for either party during challenge
@@ -71,7 +68,7 @@ contract Tcr {
     event _RewardClaimed(uint indexed challengeID, uint reward, address indexed voter);
 
     // using the constructor to initialize the TCR parameters
-    // again, to make it simple, skipping the Parameterizer and ParameterizerFactory
+    // again, to keep it simple, skipping the Parameterizer and ParameterizerFactory
     constructor(
         string _name,
         address _token,
@@ -128,7 +125,7 @@ contract Tcr {
     }
 
     // challenge a listing from being whitelisted
-    function challenge(bytes32 _listingHash, uint _amount) 
+    function challenge(bytes32 _listingHash, uint _amount)
         external returns (uint challengeId) {
         Listing storage listing = listings[_listingHash];
 
@@ -138,16 +135,18 @@ contract Tcr {
         // Prevent multiple challenges
         require(listing.challengeId == 0 || challenges[listing.challengeId].resolved, "Listing is already challenged.");
 
+        // check if apply stage is active
+        /* solium-disable-next-line security/no-block-members */
+        require(listing.applicationExpiry > now, "Apply stage has passed.");
+        
         pollNonce = pollNonce + 1;
         challenges[pollNonce] = Challenge({
-            listingHash: _listingHash,
             challenger: msg.sender,
             stake: _amount,
             resolved: false
         });
 
         polls[pollNonce] = Poll({
-            challengeId: pollNonce,
             votesFor: 0,
             votesAgainst: 0,
             commitEndDate: now.add(commitStageLen) /* solium-disable-line security/no-block-members */
@@ -157,14 +156,37 @@ contract Tcr {
         listing.challengeId = pollNonce;
 
         // Takes tokens from challenger
-        require(token.transferFrom(msg.sender, this, minDeposit), "Token transfer failed.");
+        require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
 
         emit _Challenge(_listingHash, pollNonce, msg.sender);
         return pollNonce;
     }
 
-    function vote() public {
-        // TODO
+    function vote(bytes32 _listingHash, uint _amount, bool _choice) public {
+        Listing storage listing = listings[_listingHash];
+
+        // Listing must be in apply stage or already on the whitelist
+        require(appWasMade(_listingHash) || listing.whitelisted, "Listing does not exist.");
+
+        // Check if listing is challenged
+        require(listing.challengeId > 0 && !challenges[listing.challengeId].resolved, "Listing is not challenged.");
+
+        Poll storage poll = polls[listing.challengeId];
+
+        // check if commit stage is active
+        /* solium-disable-next-line security/no-block-members */
+        require(poll.commitEndDate > now, "Commit period has passed.");
+
+        // Takes tokens from challenger
+        require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
+
+        poll.votes[msg.sender] = Vote({
+            voteValue: _choice,
+            stake: _amount,
+            claimed: false
+        });
+
+        emit _Vote(_listingHash, listing.challengeId, msg.sender);
     }
 
     function resolve() public {
