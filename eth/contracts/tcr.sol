@@ -17,13 +17,13 @@ contract Tcr {
         uint applicationExpiry; // Expiration date of apply stage
         bool whitelisted;       // Indicates registry status
         address owner;          // Owner of Listing
-        uint unstakedDeposit;   // Number of tokens in the listing not locked in a challenge
+        uint deposit;           // Number of tokens in the listing
         uint challengeId;       // the challenge id of the current challenge
     }
 
     // instead of using the elegant PLCR voting, we are using just a list because this is *simple-TCR*
     struct Vote {
-        bool voteValue;
+        bool value;
         uint stake;
         bool claimed;
     }
@@ -32,6 +32,7 @@ contract Tcr {
         uint votesFor;
         uint votesAgainst;
         uint commitEndDate;
+        bool passed;
         mapping(address => Vote) votes; // revealed by default; no partial locking
     }
 
@@ -39,6 +40,8 @@ contract Tcr {
         address challenger;     // Owner of Challenge
         bool resolved;          // Indication of if challenge is resolved
         uint stake;             // Number of tokens at stake for either party during challenge
+        uint rewardPool;        // number of tokens from losing side - winning reward
+        uint totalTokens;       // number of tokens from winning side - to be returned
     }
 
     // Maps challengeIDs to associated challenge data
@@ -62,10 +65,10 @@ contract Tcr {
 
     // Events
     event _Application(bytes32 indexed listingHash, uint deposit, string data, address indexed applicant);
-    event _Challenge(bytes32 indexed listingHash, uint challengeID, address indexed challenger);
-    event _Vote(bytes32 indexed listingHash, uint challengeID, address indexed voter);
-    event _ResolveChallenge(bytes32 indexed listingHash, uint challengeID, address indexed resolver);
-    event _RewardClaimed(uint indexed challengeID, uint reward, address indexed voter);
+    event _Challenge(bytes32 indexed listingHash, uint challengeId, address indexed challenger);
+    event _Vote(bytes32 indexed listingHash, uint challengeId, address indexed voter);
+    event _ResolveChallenge(bytes32 indexed listingHash, uint challengeId, address indexed resolver);
+    event _RewardClaimed(uint indexed challengeId, uint reward, address indexed voter);
 
     // using the constructor to initialize the TCR parameters
     // again, to keep it simple, skipping the Parameterizer and ParameterizerFactory
@@ -116,7 +119,7 @@ contract Tcr {
         // now or block.timestamp is safe here (can live with ~15 sec approximation)
         /* solium-disable-next-line security/no-block-members */
         listing.applicationExpiry = now.add(applyStageLen);
-        listing.unstakedDeposit = _amount;
+        listing.deposit = _amount;
 
         // Transfer tokens from user
         require(token.transferFrom(listing.owner, this, _amount), "Token transfer failed.");
@@ -143,13 +146,16 @@ contract Tcr {
         challenges[pollNonce] = Challenge({
             challenger: msg.sender,
             stake: _amount,
-            resolved: false
+            resolved: false,
+            totalTokens: 0,
+            rewardPool: 0
         });
 
         // create a new poll for the challenge
         polls[pollNonce] = Poll({
             votesFor: 0,
             votesAgainst: 0,
+            passed: false,
             commitEndDate: now.add(commitStageLen) /* solium-disable-line security/no-block-members */
         });
 
@@ -184,8 +190,14 @@ contract Tcr {
         // Transfer tokens from voter
         require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
 
+        if(_choice) {
+            poll.votesFor += _amount;
+        } else {
+            poll.votesAgainst += _amount;
+        }
+
         poll.votes[msg.sender] = Vote({
-            voteValue: _choice,
+            value: _choice,
             stake: _amount,
             claimed: false
         });
@@ -193,7 +205,103 @@ contract Tcr {
         emit _Vote(_listingHash, listing.challengeId, msg.sender);
     }
 
-    function resolve() public {
-        // TODO
+    // check if the listing can be whitelisted
+    function canBeWhitelisted(bytes32 _listingHash) public view returns (bool) {
+        uint challengeId = listings[_listingHash].challengeId;
+
+        // Ensures that the application was made,
+        // the application period has ended,
+        // the listingHash can be whitelisted,
+        // and either: the challengeId == 0, or the challenge has been resolved.
+        /* solium-disable */
+        if (appWasMade(_listingHash) && 
+            listings[_listingHash].applicationExpiry < now && 
+            !isWhitelisted(_listingHash) &&
+            (challengeId == 0 || challenges[challengeId].resolved == true)) {
+            return true; 
+        }
+
+        return false;
+    }
+
+    // updates the status of a listing
+    function updateStatus(bytes32 _listingHash) public {
+        if (canBeWhitelisted(_listingHash)) {
+            listings[_listingHash].whitelisted = true;
+        } else {
+            resolveChallenge(_listingHash);
+        }
+    }
+
+    // ends a poll and returns if the poll passed or not
+    function endPoll(uint challengeId) private returns (bool didPass) {
+        require(polls[challengeId].commitEndDate > 0, "Poll does not exist.");
+        Poll storage poll = polls[challengeId];
+
+        // check if commit stage is active
+        /* solium-disable-next-line security/no-block-members */
+        require(poll.commitEndDate < now, "Commit period is active.");
+
+        if (poll.votesFor >= poll.votesAgainst) {
+            poll.passed = true;
+        } else {
+            poll.passed = false;
+        }
+
+        return poll.passed;
+    }
+
+    // resolves a challenge and calculates rewards
+    function resolveChallenge(bytes32 _listingHash) private {
+        // Check if listing is challenged
+        Listing memory listing = listings[_listingHash];
+        require(listing.challengeId > 0 && !challenges[listing.challengeId].resolved, "Listing is not challenged.");
+
+        uint challengeId = listing.challengeId;
+
+        // end the poll
+        bool pollPassed = endPoll(challengeId);
+
+        // updated challenge status
+        challenges[challengeId].resolved = true;
+
+        address challenger = challenges[challengeId].challenger;
+
+        // Case: challenge failed
+        if (pollPassed) {
+            challenges[challengeId].totalTokens = polls[challengeId].votesFor;
+            challenges[challengeId].rewardPool = challenges[challengeId].stake + polls[challengeId].votesAgainst;
+            listings[_listingHash].whitelisted = true;
+        } else { // Case: challenge succeeded
+            // give back the challenge stake to the challenger
+            require(token.transfer(challenger, challenges[challengeId].stake), "Challenge stake return failed.");
+            challenges[challengeId].totalTokens = polls[challengeId].votesAgainst;
+            challenges[challengeId].rewardPool = listing.deposit + polls[challengeId].votesFor;
+            delete listings[_listingHash];
+        }
+
+        emit _ResolveChallenge(_listingHash, challengeId, msg.sender);
+    }
+
+    // claim rewards for a vote
+    function claimRewards(uint challengeId) public {
+        // check if challenge is resolved
+        require(challenges[challengeId].resolved == true, "Challenge is not resolved.");
+        
+        Poll storage poll = polls[challengeId];
+        Vote storage voteInstance = poll.votes[msg.sender];
+        
+        // check if vote reward is already claimed
+        require(voteInstance.claimed == false, "Vote reward is already claimed.");
+
+        // if winning party, calculate reward and transfer
+        if((poll.passed && voteInstance.value) || (!poll.passed && !voteInstance.value)) {
+            uint reward = (challenges[challengeId].rewardPool.div(challenges[challengeId].totalTokens)).mul(voteInstance.stake);
+            uint total = voteInstance.stake.add(reward);
+            require(token.transfer(msg.sender, total), "Voting reward transfer failed.");
+            emit _RewardClaimed(challengeId, total, msg.sender);
+        }
+
+        voteInstance.claimed = true;
     }
 }
