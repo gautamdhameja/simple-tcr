@@ -102,7 +102,7 @@ contract Tcr {
         return listings[_listingHash].applicationExpiry > 0;
     }
 
-    // propose a listing to be whitelisted
+    // proposes a listing to be whitelisted
     function apply(bytes32 _listingHash, uint _amount, string _data) external {
         require(!isWhitelisted(_listingHash), "Listing is already whitelisted.");
         require(!appWasMade(_listingHash), "Listing is already in apply stage.");
@@ -118,13 +118,13 @@ contract Tcr {
         listing.applicationExpiry = now.add(applyStageLen);
         listing.unstakedDeposit = _amount;
 
-        // Transfers tokens from user to Registry contract
+        // Transfer tokens from user
         require(token.transferFrom(listing.owner, this, _amount), "Token transfer failed.");
 
         emit _Application(_listingHash, _amount, _data, msg.sender);
     }
 
-    // challenge a listing from being whitelisted
+    // challenges a listing from being whitelisted
     function challenge(bytes32 _listingHash, uint _amount)
         external returns (uint challengeId) {
         Listing storage listing = listings[_listingHash];
@@ -146,6 +146,7 @@ contract Tcr {
             resolved: false
         });
 
+        // create a new poll for the challenge
         polls[pollNonce] = Poll({
             votesFor: 0,
             votesAgainst: 0,
@@ -155,13 +156,16 @@ contract Tcr {
         // Updates listingHash to store most recent challenge
         listing.challengeId = pollNonce;
 
-        // Takes tokens from challenger
+        // Transfer tokens from challenger
         require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
 
         emit _Challenge(_listingHash, pollNonce, msg.sender);
         return pollNonce;
     }
 
+    // commits a vote for/against a listing
+    // plcr voting is not being used here
+    // to keep it simple, we just store the choice as a bool - true is for and false is against
     function vote(bytes32 _listingHash, uint _amount, bool _choice) public {
         Listing storage listing = listings[_listingHash];
 
@@ -177,7 +181,7 @@ contract Tcr {
         /* solium-disable-next-line security/no-block-members */
         require(poll.commitEndDate > now, "Commit period has passed.");
 
-        // Takes tokens from challenger
+        // Transfer tokens from voter
         require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
 
         poll.votes[msg.sender] = Vote({
