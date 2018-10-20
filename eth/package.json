@@ -1,7 +1,7 @@
 {
-  "name": "erc20token",
-  "version": "1.0.0",
-  "description": "Ethereum smart contracts for *simple* TCR implementation.",
+  "name": "simple-tcr",
+  "version": "0.1.0",
+  "description": "Ethereum smart contracts for a *simple* TCR implementation.",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"
@@ -13,7 +13,7 @@
     "Ethereum",
     "Solidity",
     "TCR",
-    "Token Curated Registry"
+    "Token Curated Registries"
   ],
   "dependencies": {
     "openzeppelin-solidity": "1.12.0",
