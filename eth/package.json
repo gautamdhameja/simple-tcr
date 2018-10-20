@@ -1,19 +1,22 @@
 {
-    "name": "erc20token",
-    "version": "1.0.0",
-    "description": "Ethereum smart contracts for *simple* TCR implementation.",
-    "main": "truffle-config.js",
-    "directories": {
-      "test": "test"
-    },
-    "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "keywords": ["Ethereum", "Solidity", "TCR", "Token Curated Registry"],
-    "author": "Gautam Dhameja",
-    "license": "MIT",
-    "dependencies": {
-      "openzeppelin-solidity": "1.12.0"
-    }
+  "name": "erc20token",
+  "version": "1.0.0",
+  "description": "Ethereum smart contracts for *simple* TCR implementation.",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Ethereum",
+    "Solidity",
+    "TCR",
+    "Token Curated Registry"
+  ],
+  "dependencies": {
+    "openzeppelin-solidity": "1.12.0",
+    "truffle-contract": "^3.0.6"
   }
-  
+}
