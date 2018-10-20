@@ -56,9 +56,9 @@ contract Tcr {
     // Global Variables
     ERC20 public token;
     string public name;
-    uint minDeposit;
-    uint applyStageLen;
-    uint commitStageLen;
+    uint public minDeposit;
+    uint public applyStageLen;
+    uint public commitStageLen;
 
     uint constant public INITIAL_POLL_NONCE = 0;
     uint public pollNonce;
