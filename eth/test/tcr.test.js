@@ -12,12 +12,12 @@ contract('Tcr', async function (accounts) {
 
     it("should init name", async function () {
         const name = await tcrInstance.name();
-        assert.equal(name, "demotcr", "name didnt initialize");
+        assert.equal(name, "DemoTcr", "name didnt initialize");
     });
 
     it("should init token", async function () {
         const name = await tokenInstance.name();
-        assert.equal(name, "DemoToken", "name didnt initialize");
+        assert.equal(name, "DemoToken", "token name didnt initialize");
     });
 
     it("should init minDeposit", async function () {
