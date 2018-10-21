@@ -2,7 +2,7 @@ var token = artifacts.require("./token.sol");
 
 contract('Token', async function (accounts) {
     let tokenInstance;
-    beforeEach(async () => {
+    before(async () => {
         tokenInstance = await token.deployed();
     });
 
