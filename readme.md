@@ -20,7 +20,7 @@ To keep this TCR implementation simple, following functions and components are n
 1. Hard-coded rewards formula - The rewards calculation formula for all challenges is the same and is hard-coded as we are not using dispensation percentage and vote quorum parameters.
 1. Only basic curation functions are implemented. Exits, deposit reduction, etc. are not implemented.
 
-### When all this is left out, what's still in there?
+## When all this is left out, what's still in there?
 
 Good question!
 
@@ -30,10 +30,11 @@ The following simple TCR flow is implemented,
 1. Apply a listing
 1. Challenge an applied/whitelisted listing
 1. Vote on a challenge
-1. Claim rewards when the challenge is resolved
+1. Update status of a listing (resolve challenge)
+1. Claim rewards after a challenge is resolved
 
 This basic flow helps understand the power of community driven curation.
 
 ## Structure
 
-The repository follow the structure of a regular truffle app created using `truffle init`. The contracts directory has two contracts - `token` and `tcr`. The token contract is default ERC20 contract and the tcr contract has what's described in the sections above. The `test` directory has positive unit tests for both contracts.
+The repository follow the structure of a regular truffle app created using `truffle init`. The **contracts** directory has two contracts - `token` and `tcr`. The token contract is default ERC20 contract and the tcr contract has what's described in the sections above. The **test** directory has positive unit tests for both contracts.
