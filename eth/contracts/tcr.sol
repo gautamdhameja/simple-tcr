@@ -5,6 +5,7 @@
 // https://github.com/skmgoldin/tcr
 
 pragma solidity ^0.4.24;
+pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -19,6 +20,8 @@ contract Tcr {
         address owner;          // Owner of Listing
         uint deposit;           // Number of tokens in the listing
         uint challengeId;       // the challenge id of the current challenge
+        string data;            // name of listing (for UI)
+        uint arrIndex;          // arrayIndex of listing in listingNames array (for deletion)
     }
 
     // instead of using the elegant PLCR voting, we are using just a list because this is *simple-TCR*
@@ -45,13 +48,14 @@ contract Tcr {
     }
 
     // Maps challengeIDs to associated challenge data
-    mapping(uint => Challenge) public challenges;
+    mapping(uint => Challenge) private challenges;
 
     // Maps listingHashes to associated listingHash data
-    mapping(bytes32 => Listing) public listings;
+    mapping(bytes32 => Listing) private listings;
+    string[] public listingNames;
 
     // Maps polls to associated challenge
-    mapping(uint => Poll) public polls;
+    mapping(uint => Poll) private polls;
 
     // Global Variables
     ERC20 public token;
@@ -60,7 +64,7 @@ contract Tcr {
     uint public applyStageLen;
     uint public commitStageLen;
 
-    uint constant public INITIAL_POLL_NONCE = 0;
+    uint constant private INITIAL_POLL_NONCE = 0;
     uint public pollNonce;
 
     // Events
@@ -105,6 +109,26 @@ contract Tcr {
         return listings[_listingHash].applicationExpiry > 0;
     }
 
+    // get all listing names (for UI)
+    // not to be used in a production use case
+    function getAllListings() public view returns (string[]) {
+        string[] memory listingArr = new string[](listingNames.length);
+        for (uint256 i = 0; i < listingNames.length; i++) {
+            listingArr[i] = listingNames[i];
+        }
+        return listingArr;
+    }
+
+    // get details of a listing (for UI)
+    function getListingDetails(bytes32 _listingHash) public view returns (bool, address, uint, string) {
+        Listing memory listingIns = listings[_listingHash];
+
+        // Listing must be in apply stage or already on the whitelist
+        require(appWasMade(_listingHash) || listingIns.whitelisted, "Listing does not exist.");
+        
+        return (listingIns.whitelisted, listingIns.owner, listingIns.challengeId, listingIns.data);
+    }
+
     // proposes a listing to be whitelisted
     function apply(bytes32 _listingHash, uint _amount, string _data) external {
         require(!isWhitelisted(_listingHash), "Listing is already whitelisted.");
@@ -114,6 +138,9 @@ contract Tcr {
         // Sets owner
         Listing storage listing = listings[_listingHash];
         listing.owner = msg.sender;
+        listing.data = _data;
+        listingNames.push(listing.data);
+        listing.arrIndex = listingNames.length - 1;
 
         // Sets apply stage end time
         // now or block.timestamp is safe here (can live with ~15 sec approximation)
@@ -278,6 +305,7 @@ contract Tcr {
             challenges[challengeId].totalTokens = polls[challengeId].votesAgainst;
             challenges[challengeId].rewardPool = listing.deposit + polls[challengeId].votesFor;
             delete listings[_listingHash];
+            delete listingNames[listing.arrIndex];
         }
 
         emit _ResolveChallenge(_listingHash, challengeId, msg.sender);
