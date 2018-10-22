@@ -223,6 +223,7 @@ contract Tcr {
             poll.votesAgainst += _amount;
         }
 
+        // TODO: fix vote override when same person is voing again
         poll.votes[msg.sender] = Vote({
             value: _choice,
             stake: _amount,
