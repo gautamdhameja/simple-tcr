@@ -1,4 +1,4 @@
-var token = artifacts.require("./token.sol");
+var token = artifacts.require("Token");
 
 contract('Token', async function (accounts) {
     let tokenInstance;

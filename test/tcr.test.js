@@ -1,5 +1,5 @@
-var tcr = artifacts.require("./tcr.sol");
-var token = artifacts.require("./token.sol");
+var tcr = artifacts.require("Tcr");
+var token = artifacts.require("Token");
 
 async function increaseTime(duration) {
     const id = Date.now()
