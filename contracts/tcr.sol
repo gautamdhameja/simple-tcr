@@ -119,6 +119,11 @@ contract Tcr {
         return listingArr;
     }
 
+    // get details of this registry (for UI)
+    function getDetails() public view returns (string, address, uint, uint, uint) {
+        return (name, token, minDeposit, applyStageLen, commitStageLen);
+    }
+
     // get details of a listing (for UI)
     function getListingDetails(bytes32 _listingHash) public view returns (bool, address, uint, string) {
         Listing memory listingIns = listings[_listingHash];
