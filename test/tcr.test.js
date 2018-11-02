@@ -127,8 +127,8 @@ contract('Tcr', async function (accounts) {
     let challengeId;
     it("should get listing details", async function () {
         const listingDetails = await tcrInstance.getListingDetails(web3.fromAscii(listingName));
-        challengeId = listingDetails[2].toNumber();
-        assert.equal(listingDetails[3], listingName, "listing details don't match");
+        challengeId = listingDetails[3].toNumber();
+        assert.equal(listingDetails[4], listingName, "listing details don't match");
     });
 
     it("should claim rewards for winner", async function () {

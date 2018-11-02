@@ -125,13 +125,13 @@ contract Tcr {
     }
 
     // get details of a listing (for UI)
-    function getListingDetails(bytes32 _listingHash) public view returns (bool, address, uint, string) {
+    function getListingDetails(bytes32 _listingHash) public view returns (bool, address, uint, uint, string) {
         Listing memory listingIns = listings[_listingHash];
 
         // Listing must be in apply stage or already on the whitelist
         require(appWasMade(_listingHash) || listingIns.whitelisted, "Listing does not exist.");
         
-        return (listingIns.whitelisted, listingIns.owner, listingIns.challengeId, listingIns.data);
+        return (listingIns.whitelisted, listingIns.owner, listingIns.deposit, listingIns.challengeId, listingIns.data);
     }
 
     // proposes a listing to be whitelisted
@@ -173,6 +173,9 @@ contract Tcr {
         // check if apply stage is active
         /* solium-disable-next-line security/no-block-members */
         require(listing.applicationExpiry > now, "Apply stage has passed.");
+
+        // check if enough amount is staked for challenge
+        require(_amount >= listing.deposit, "Not enough stake passed for challenge.");
         
         pollNonce = pollNonce + 1;
         challenges[pollNonce] = Challenge({
