@@ -4,11 +4,11 @@
 // For real world usage, please refer to the generic TCR implementation
 // https://github.com/skmgoldin/tcr
 
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.8;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "../node_modules/openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract Tcr {
 
@@ -30,7 +30,7 @@ contract Tcr {
         uint stake;
         bool claimed;
     }
-    
+
     struct Poll {
         uint votesFor;
         uint votesAgainst;
@@ -77,11 +77,11 @@ contract Tcr {
     // using the constructor to initialize the TCR parameters
     // again, to keep it simple, skipping the Parameterizer and ParameterizerFactory
     constructor(
-        string _name,
+        string memory _name,
         address _token,
-        uint[] _parameters
+        uint[] memory _parameters
     ) public {
-        require(_token != 0 && address(token) == 0, "Token address should not be 0 address.");
+        require(_token != address(0), "Token address should not be 0 address.");
 
         token = ERC20(_token);
         name = _name;
@@ -94,7 +94,7 @@ contract Tcr {
 
         // length of commit period for voting
         commitStageLen = _parameters[2];
-        
+
         // Initialize the poll nonce
         pollNonce = INITIAL_POLL_NONCE;
     }
@@ -111,7 +111,7 @@ contract Tcr {
 
     // get all listing names (for UI)
     // not to be used in a production use case
-    function getAllListings() public view returns (string[]) {
+    function getAllListings() public view returns (string[] memory) {
         string[] memory listingArr = new string[](listingNames.length);
         for (uint256 i = 0; i < listingNames.length; i++) {
             listingArr[i] = listingNames[i];
@@ -120,22 +120,23 @@ contract Tcr {
     }
 
     // get details of this registry (for UI)
-    function getDetails() public view returns (string, address, uint, uint, uint) {
-        return (name, token, minDeposit, applyStageLen, commitStageLen);
+    function getDetails() public view returns (string memory, address, uint, uint, uint) {
+        string memory _name = name;
+        return (_name, address(token), minDeposit, applyStageLen, commitStageLen);
     }
 
     // get details of a listing (for UI)
-    function getListingDetails(bytes32 _listingHash) public view returns (bool, address, uint, uint, string) {
+    function getListingDetails(bytes32 _listingHash) public view returns (bool, address, uint, uint, string memory) {
         Listing memory listingIns = listings[_listingHash];
 
         // Listing must be in apply stage or already on the whitelist
         require(appWasMade(_listingHash) || listingIns.whitelisted, "Listing does not exist.");
-        
+
         return (listingIns.whitelisted, listingIns.owner, listingIns.deposit, listingIns.challengeId, listingIns.data);
     }
 
     // proposes a listing to be whitelisted
-    function apply(bytes32 _listingHash, uint _amount, string _data) external {
+    function propose(bytes32 _listingHash, uint _amount, string calldata _data) external {
         require(!isWhitelisted(_listingHash), "Listing is already whitelisted.");
         require(!appWasMade(_listingHash), "Listing is already in apply stage.");
         require(_amount >= minDeposit, "Not enough stake for application.");
@@ -154,7 +155,7 @@ contract Tcr {
         listing.deposit = _amount;
 
         // Transfer tokens from user
-        require(token.transferFrom(listing.owner, this, _amount), "Token transfer failed.");
+        require(token.transferFrom(listing.owner, address(this), _amount), "Token transfer failed.");
 
         emit _Application(_listingHash, _amount, _data, msg.sender);
     }
@@ -198,7 +199,7 @@ contract Tcr {
         listing.challengeId = pollNonce;
 
         // Transfer tokens from challenger
-        require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
+        require(token.transferFrom(msg.sender, address(this), _amount), "Token transfer failed.");
 
         emit _Challenge(_listingHash, pollNonce, msg.sender);
         return pollNonce;
@@ -223,7 +224,7 @@ contract Tcr {
         require(poll.commitEndDate > now, "Commit period has passed.");
 
         // Transfer tokens from voter
-        require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
+        require(token.transferFrom(msg.sender, address(this), _amount), "Token transfer failed.");
 
         if(_choice) {
             poll.votesFor += _amount;

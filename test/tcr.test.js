@@ -4,7 +4,7 @@ var token = artifacts.require("Token");
 async function increaseTime(duration) {
     const id = Date.now()
     return new Promise((resolve, reject) => {
-        web3.currentProvider.sendAsync({
+        web3.currentProvider.send({
             jsonrpc: '2.0',
             method: 'evm_increaseTime',
             params: [duration],
@@ -12,7 +12,7 @@ async function increaseTime(duration) {
         }, err1 => {
             if (err1) return reject(err1)
 
-            web3.currentProvider.sendAsync({
+            web3.currentProvider.send({
                 jsonrpc: '2.0',
                 method: 'evm_mine',
                 id: id + 1,
@@ -58,7 +58,7 @@ contract('Tcr', async function (accounts) {
         await tokenInstance.approve(tcrInstance.address, 100, {
             from: accounts[0]
         });
-        const applyListing = await tcrInstance.apply(web3.fromAscii(listingName), 100, listingName, {
+        const applyListing = await tcrInstance.propose(web3.utils.fromAscii(listingName), 100, listingName, {
             from: accounts[0]
         });
         assert.equal(applyListing.logs[0].event, "_Application", "apply listing failed");
@@ -71,7 +71,7 @@ contract('Tcr', async function (accounts) {
         await tokenInstance.approve(tcrInstance.address, 100, {
             from: accounts[1]
         });
-        const challengeListing = await tcrInstance.challenge(web3.fromAscii(listingName), 100, {
+        const challengeListing = await tcrInstance.challenge(web3.utils.fromAscii(listingName), 100, {
             from: accounts[1]
         });
 
@@ -86,7 +86,7 @@ contract('Tcr', async function (accounts) {
             from: accounts[3]
         });
         try {
-            await tcrInstance.challenge(web3.fromAscii("abcd"), 100, {
+            await tcrInstance.challenge(web3.utils.fromAscii("abcd"), 100, {
                 from: accounts[3]
             });
         } catch (err) {
@@ -101,14 +101,14 @@ contract('Tcr', async function (accounts) {
         await tokenInstance.approve(tcrInstance.address, 10, {
             from: accounts[2]
         });
-        const voteAcc2 = await tcrInstance.vote(web3.fromAscii(listingName), 10, true, {
+        const voteAcc2 = await tcrInstance.vote(web3.utils.fromAscii(listingName), 10, true, {
             from: accounts[2]
         });
 
         await tokenInstance.approve(tcrInstance.address, 5, {
             from: accounts[1]
         });
-        const voteAcc1 = await tcrInstance.vote(web3.fromAscii(listingName), 5, false, {
+        const voteAcc1 = await tcrInstance.vote(web3.utils.fromAscii(listingName), 5, false, {
             from: accounts[1]
         });
 
@@ -118,15 +118,15 @@ contract('Tcr', async function (accounts) {
 
     it("should update listing status", async function () {
         await increaseTime(100);
-        const resolveListing = await tcrInstance.updateStatus(web3.fromAscii(listingName));
+        const resolveListing = await tcrInstance.updateStatus(web3.utils.fromAscii(listingName));
         assert.equal(resolveListing.logs[0].event, "_ResolveChallenge", "update status failed");
-        const isWhitelisted = await tcrInstance.isWhitelisted(web3.fromAscii(listingName));
+        const isWhitelisted = await tcrInstance.isWhitelisted(web3.utils.fromAscii(listingName));
         assert.equal(isWhitelisted, true, "whitelisting failed");
     });
 
     let challengeId;
     it("should get listing details", async function () {
-        const listingDetails = await tcrInstance.getListingDetails(web3.fromAscii(listingName));
+        const listingDetails = await tcrInstance.getListingDetails(web3.utils.fromAscii(listingName));
         challengeId = listingDetails[3].toNumber();
         assert.equal(listingDetails[4], listingName, "listing details don't match");
     });
